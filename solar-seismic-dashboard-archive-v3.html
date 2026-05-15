@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Solar-Seismic Correlation Rig - Archive Edition</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #05090f;
+      --panel: rgba(8, 15, 28, 0.88);
+      --panel2: rgba(2, 6, 23, 0.88);
+      --border: #1e293b;
+      --text: #d8e7f6;
+      --muted: #64748b;
+      --gold: #f59e0b;
+      --rose: #fb7185;
+      --green: #22c55e;
+      --sky: #38bdf8;
+      --violet: #a78bfa;
+      --blue: #60a5fa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, #102542 0, #05090f 34%, #03060b 100%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.24);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 8px 0 6px;
+      font-size: clamp(28px, 7vw, 44px);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .22em;
+    }
+
+    p {
+      color: #94a3b8;
+      line-height: 1.6;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .pills, .controls, .stats, .events {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      border: 1px solid rgba(56,189,248,.4);
+      background: rgba(56,189,248,.08);
+      color: var(--sky);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .pill.gold { color: var(--gold); border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.1); }
+    .pill.rose { color: var(--rose); border-color: rgba(251,113,133,.45); background: rgba(251,113,133,.1); }
+    .pill.green { color: var(--green); border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.1); }
+    .pill.violet { color: var(--violet); border-color: rgba(167,139,250,.45); background: rgba(167,139,250,.1); }
+    .pill.blue { color: var(--blue); border-color: rgba(96,165,250,.45); background: rgba(96,165,250,.1); }
+    .pill.grey { color: #94a3b8; border-color: rgba(148,163,184,.35); background: rgba(148,163,184,.08); }
+
+    .controls {
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      margin-top: 18px;
+    }
+
+    label {
+      display: block;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      border-radius: 18px;
+      padding: 12px;
+    }
+
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    select, input[type="range"], input[type="date"] {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+
+    select, input[type="date"] {
+      appearance: none;
+      border: 1px solid #334155;
+      background: #020617;
+      color: #f8fafc;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 15px;
+    }
+
+    .rangeRow {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .stats {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 14px;
+    }
+
+    .stat .value {
+      font-size: 24px;
+      font-weight: 950;
+      color: var(--gold);
+      margin-top: 3px;
+    }
+
+    .stat .detail {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .chartWrap {
+      height: 380px;
+      min-height: 280px;
+    }
+
+    .tableWrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 16px;
+      border: 1px solid #0f172a;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 920px;
+      font-size: 12px;
+      background: rgba(2,6,23,.35);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 9px;
+      border-bottom: 1px solid #0f172a;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+    }
+
+    td.location {
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #bae6fd;
+    }
+
+    a { color: inherit; }
+
+    .events {
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .event {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(0,0,0,.18);
+      padding: 14px;
+      text-decoration: none;
+    }
+
+    .event:hover {
+      border-color: rgba(245,158,11,.65);
+      background: rgba(245,158,11,.06);
+    }
+
+    .eventTitle {
+      margin-top: 8px;
+      font-weight: 800;
+    }
+
+    .eventMeta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .warning {
+      border-color: rgba(245,158,11,.35);
+      background: rgba(245,158,11,.08);
+      color: rgba(254,243,199,.88);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .error {
+      color: #fecdd3;
+      border-color: rgba(251,113,133,.45);
+      background: rgba(251,113,133,.08);
+    }
+
+    .spinner {
+      margin: 80px auto 18px;
+      width: 44px;
+      height: 44px;
+      border: 4px solid #334155;
+      border-top-color: var(--gold);
+      border-radius: 999px;
+      animation: spin 1.2s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    button {
+      border: 1px solid rgba(245,158,11,.55);
+      background: rgba(245,158,11,.1);
+      color: #fcd34d;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      border-color: rgba(96,165,250,.55);
+      background: rgba(96,165,250,.1);
+      color: #bfdbfe;
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .hidden { display: none !important; }
+
+    footer {
+      text-align: center;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: .2em;
+      font-size: 10px;
+      padding: 20px 0 8px;
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 12px; }
+      .card { border-radius: 20px; padding: 14px; }
+      .chartWrap { height: 320px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stat .value { font-size: 20px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <section class="card">
+      <div class="pills">
+        <span class="pill gold">Archive edition</span>
+        <span class="pill">NOAA live</span>
+        <span class="pill blue">NASA OMNI</span>
+        <span class="pill violet">USGS</span>
+      </div>
+      <h1>Solar-Seismic Correlation Rig</h1>
+      <p>
+        Phone-friendly dashboard inspired by Marchitelli et al. (2020). Live mode uses NOAA DSCOVR L1. Archive mode uses NASA OMNI_HRO2_1MIN proton density so you can test historic windows instead of squinting through the 7-day keyhole.
+      </p>
+
+      <div class="controls">
+        <label>
+          <span class="label">Data mode</span>
+          <select id="mode">
+            <option value="archive" selected>Archive: NASA OMNI 1-min</option>
+            <option value="live">Live: NOAA DSCOVR 7-day</option>
+          </select>
+        </label>
+
+        <label class="archiveOnly">
+          <span class="label">Archive start</span>
+          <input id="archiveStart" type="date" value="2023-12-30" min="1995-01-01" />
+        </label>
+
+        <label class="archiveOnly">
+          <span class="label">Archive span</span>
+          <select id="archiveDays">
+            <option value="3">3 days</option>
+            <option value="7" selected>7 days</option>
+            <option value="14">14 days</option>
+            <option value="30">30 days, heavier</option>
+          </select>
+        </label>
+
+        <label class="liveOnly hidden">
+          <span class="label">Live lookback</span>
+          <select id="lookback">
+            <option value="3">3 days</option>
+            <option value="5">5 days</option>
+            <option value="7" selected>7 days, NOAA max</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="label">Magnitude floor</span>
+          <select id="minMag">
+            <option value="5.5">M5.5+</option>
+            <option value="6.0" selected>M6.0+</option>
+            <option value="6.5">M6.5+</option>
+            <option value="7.0">M7.0+</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="label">Proton threshold</span>
+          <div class="rangeRow">
+            <input id="threshold" type="range" min="8" max="30" step="0.5" value="15.5" />
+            <span id="thresholdVal" class="mono" style="color:var(--gold); width:58px; text-align:right;">15.5</span>
+          </div>
+        </label>
+
+        <label>
+          <span class="label">Notable year</span>
+          <select id="year">
+            <option value="2023">2023</option>
+            <option value="2024" selected>2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; align-items:center;">
+        <button id="refresh">Load data</button>
+        <button id="exportCsv" class="secondary" disabled>Export analysed CSV</button>
+        <span id="lastUpdated" style="color:var(--muted); font-size:12px;"></span>
+      </div>
+    </section>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <p style="text-align:center;"><strong style="color:var(--gold); letter-spacing:.2em; text-transform:uppercase;">Fetching data</strong></p>
+      <p id="phase" style="text-align:center; margin-top:8px;">Initialising...</p>
+    </div>
+
+    <section id="errorBox" class="card error" style="display:none;"></section>
+
+    <section id="dashboard" style="display:none;">
+      <div class="stats" id="stats"></div>
+
+      <section class="card">
+        <h2>Proton density vs earthquakes</h2>
+        <p id="chartExplainer">Gold line: proton density. Red line: threshold. Pink bands: drop-below-threshold zones after high-density periods. Dots at the bottom mark earthquakes.</p>
+        <div class="chartWrap">
+          <canvas id="densityChart"></canvas>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>1Dy bT condition table</h2>
+        <p>Consistent = previous 24h mean density above threshold, plus a crossing below threshold in the 24h before the earthquake. Archive mode includes a 48h plasma pre-roll before the visible earthquake window.</p>
+        <div class="tableWrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Mag</th>
+                <th>Location</th>
+                <th>Depth</th>
+                <th>Prev ρ</th>
+                <th>Curr ρ</th>
+                <th>Peak ρ</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="eventRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Fragile pseudo-null</h2>
+        <p>A quick comparison against random timestamps inside the same plasma window. It is a smell test, not a paper-slayer.</p>
+        <div id="nullBox" class="card" style="margin-top:12px; margin-bottom:0;"></div>
+      </section>
+
+      <section class="card">
+        <h2 id="notableTitle">Notable events</h2>
+        <p>M7.4+ events from USGS for the selected calendar year. This list is separate from the tested date window.</p>
+        <div id="events" class="events" style="margin-top:12px;"></div>
+      </section>
+
+      <section class="card warning">
+        <h2 style="color:#fcd34d;">Interpretive guardrails</h2>
+        Archive mode is the useful one for historical testing, but it changes the plasma source: NASA OMNI is merged, processed, and time-shifted near-Earth solar wind data, while live mode uses NOAA DSCOVR near-real-time plasma. Treat cross-mode comparisons carefully. A serious replication still needs a predeclared threshold rule, completeness controls, clustering-aware nulls, tectonic regional controls, and a post-selection holdout. Interesting beastie, no prophecy hat.
+      </section>
+    </section>
+
+    <footer>Data: NOAA SWPC DSCOVR L1 · NASA CDAWeb OMNI_HRO2_1MIN · USGS Earthquake Hazards Program · Inspired by Marchitelli et al. 2020</footer>
+  </main>
+
+<script>
+const NOAA = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json";
+const USGS = "https://earthquake.usgs.gov/fdsnws/event/1/query";
+const HAPI = "https://cdaweb.gsfc.nasa.gov/hapi/data";
+const LASP = "https://lasp.colorado.edu/space-weather-portal/latis/dap/omni_hro2_1min.csv";
+const HOUR = 3600000;
+const DAY = 24 * HOUR;
+
+const state = {
+  mode: "archive",
+  plasmaRaw: [],
+  quakes: [],
+  notable: [],
+  analysed: [],
+  chart: null,
+  source: "",
+  quakeStart: null,
+  quakeEnd: null,
+  plasmaStart: null,
+  plasmaEnd: null,
+  warnings: []
+};
+
+const $ = (id) => document.getElementById(id);
+
+function fmt(ts) {
+  return new Date(ts).toLocaleString("en-GB", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  });
+}
+
+function fmtShort(ts) {
+  return new Date(ts).toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+}
+
+function toIso(ts) {
+  return new Date(ts).toISOString().replace(".000Z", "Z");
+}
+
+function parseSolarTime(value) {
+  if (typeof value !== "string") return NaN;
+  const clean = value.trim();
+  if (!clean) return NaN;
+  const withZone = /Z$|[+-]\d\d:?\d\d$/.test(clean) ? clean : `${clean}Z`;
+  return Date.parse(withZone);
+}
+
+function csvEscape(value) {
+  const s = String(value ?? "");
+  return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+}
+
+function mean(arr, key) {
+  const vals = arr.map(d => key ? d[key] : d).filter(Number.isFinite);
+  return vals.length ? vals.reduce((a,b) => a + b, 0) / vals.length : null;
+}
+
+function maxVal(arr, key) {
+  const vals = arr.map(d => key ? d[key] : d).filter(Number.isFinite);
+  return vals.length ? Math.max(...vals) : null;
+}
+
+function magColour(m) {
+  if (m >= 8) return "#fb7185";
+  if (m >= 7.5) return "#f43f5e";
+  if (m >= 6.5) return "#f59e0b";
+  if (m >= 5.5) return "#facc15";
+  return "#94a3b8";
+}
+
+function magLabel(m) {
+  if (m >= 8) return "GREAT";
+  if (m >= 7.5) return "MAJOR";
+  if (m >= 6.5) return "STRONG";
+  if (m >= 5.5) return "MOD";
+  return "MINOR";
+}
+
+function pill(text, cls = "") {
+  return `<span class="pill ${cls}">${text}</span>`;
+}
+
+function parseNoaaPlasma(raw) {
+  if (!Array.isArray(raw) || raw.length < 2) return [];
+  const header = raw[0];
+  const ti = header.indexOf("time_tag");
+  const di = header.indexOf("density");
+  const si = header.indexOf("speed");
+
+  return raw.slice(1).map(row => {
+    const t = Date.parse(row[ti] + "Z");
+    const density = Number(row[di]);
+    const speed = Number(row[si]);
+    return { t, density, speed, source: "NOAA DSCOVR" };
+  }).filter(validPlasma).sort((a,b) => a.t - b.t);
+}
+
+function validPlasma(d) {
+  return Number.isFinite(d.t) &&
+    Number.isFinite(d.density) &&
+    d.density > 0 &&
+    d.density < 200;
+}
+
+function normaliseName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function findColumn(names, aliases) {
+  const normalised = names.map(normaliseName);
+
+  for (const alias of aliases) {
+    const a = normaliseName(alias);
+    const exact = normalised.indexOf(a);
+    if (exact >= 0) return exact;
+  }
+
+  for (let i = 0; i < normalised.length; i++) {
+    if (aliases.some(alias => normalised[i].includes(normaliseName(alias)))) return i;
+  }
+
+  return -1;
+}
+
+function firstParseableTimeIndex(row) {
+  if (!Array.isArray(row)) return -1;
+  for (let i = 0; i < row.length; i++) {
+    if (Number.isFinite(parseSolarTime(row[i]))) return i;
+  }
+  return -1;
+}
+
+function cleanNumber(value) {
+  if (value === null || value === undefined) return NaN;
+  if (Array.isArray(value)) return cleanNumber(value[0]);
+  const n = Number(String(value).trim());
+  if (!Number.isFinite(n)) return NaN;
+  if (Math.abs(n) >= 1e29) return NaN;
+  if (n === 999.99 || n === 9999.99 || n === 99999.9 || n === 9999999) return NaN;
+  return n;
+}
+
+function parseHapiPlasma(raw) {
+  if (!raw || !Array.isArray(raw.data)) return [];
+
+  const parameters = Array.isArray(raw.parameters)
+    ? raw.parameters
+    : Array.isArray(raw?.HAPI?.parameters)
+      ? raw.HAPI.parameters
+      : [];
+
+  const names = parameters.map(p => String(p.name || p.id || p.label || ""));
+
+  return raw.data.map(row => {
+    if (Array.isArray(row)) {
+      let ti = findColumn(names, ["time", "epoch"]);
+      if (ti < 0) ti = firstParseableTimeIndex(row);
+
+      let di = findColumn(names, ["proton_density", "density", "n_p", "np"]);
+      let si = findColumn(names, ["flow_speed", "speed", "v_p", "vp"]);
+
+      /*
+        HAPI normally returns the time column first even when the query only names
+        data parameters. If the metadata is missing/odd, assume query order:
+        time, proton_density, flow_speed.
+      */
+      if (ti < 0 && row.length >= 1) ti = 0;
+      if (di < 0 && row.length >= 2) di = ti === 0 ? 1 : 0;
+      if (si < 0 && row.length >= 3) si = ti === 0 ? 2 : 1;
+
+      const density = cleanNumber(row[di]);
+      const speed = si >= 0 ? cleanNumber(row[si]) : null;
+
+      return {
+        t: parseSolarTime(row[ti]),
+        density,
+        speed,
+        source: "NASA CDAWeb OMNI"
+      };
+    }
+
+    if (row && typeof row === "object") {
+      const keys = Object.keys(row);
+      const tiKey = keys.find(k => ["time", "epoch"].includes(normaliseName(k))) ||
+        keys.find(k => Number.isFinite(parseSolarTime(row[k])));
+      const diKey = keys.find(k => normaliseName(k).includes("proton_density")) ||
+        keys.find(k => ["density", "np", "n_p"].includes(normaliseName(k)));
+      const siKey = keys.find(k => normaliseName(k).includes("flow_speed")) ||
+        keys.find(k => ["speed", "vp", "v_p"].includes(normaliseName(k)));
+
+      return {
+        t: parseSolarTime(row[tiKey]),
+        density: cleanNumber(row[diKey]),
+        speed: siKey ? cleanNumber(row[siKey]) : null,
+        source: "NASA CDAWeb OMNI"
+      };
+    }
+
+    return { t: NaN, density: NaN, speed: null, source: "NASA CDAWeb OMNI" };
+  }).filter(validPlasma).sort((a,b) => a.t - b.t);
+}
+
+function splitCsvLine(line) {
+  const out = [];
+  let cur = "";
+  let quote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (quote && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        quote = !quote;
+      }
+    } else if (ch === "," && !quote) {
+      out.push(cur.trim());
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function parseGenericPlasmaCsv(text, sourceLabel = "archive CSV") {
+  const lines = text
+    .split(/\r?\n/)
+    .map(x => x.trim())
+    .filter(Boolean)
+    .filter(x => !x.startsWith("#"));
+
+  if (!lines.length) return [];
+
+  let headerIndex = lines.findIndex(line => {
+    const cols = splitCsvLine(line).map(normaliseName);
+    return cols.some(c => c.includes("time") || c.includes("epoch")) &&
+      cols.some(c => c.includes("proton_density") || c === "density" || c === "np" || c === "n_p");
+  });
+
+  let header = [];
+  let dataLines = lines;
+
+  if (headerIndex >= 0) {
+    header = splitCsvLine(lines[headerIndex]);
+    dataLines = lines.slice(headerIndex + 1);
+  } else {
+    /*
+      LASP usually returns a header, but if a proxy strips it, preserve the
+      requested order: time, proton_density, flow_speed.
+    */
+    header = ["time", "proton_density", "flow_speed"];
+  }
+
+  let ti = findColumn(header, ["time", "epoch"]);
+  let di = findColumn(header, ["proton_density", "density", "n_p", "np"]);
+  let si = findColumn(header, ["flow_speed", "speed", "v_p", "vp"]);
+
+  if (ti < 0) ti = 0;
+  if (di < 0) di = 1;
+  if (si < 0) si = 2;
+
+  return dataLines.map(line => {
+    const row = splitCsvLine(line);
+    return {
+      t: parseSolarTime(row[ti]),
+      density: cleanNumber(row[di]),
+      speed: si >= 0 ? cleanNumber(row[si]) : null,
+      source: sourceLabel
+    };
+  }).filter(validPlasma).sort((a,b) => a.t - b.t);
+}
+
+function parseLaspCsv(text) {
+  return parseGenericPlasmaCsv(text, "LASP OMNI mirror");
+}
+
+function parseHapiCsv(text) {
+  return parseGenericPlasmaCsv(text, "NASA CDAWeb OMNI CSV");
+}
+
+function parseQuakes(raw) {
+  return (raw.features || []).map(f => ({
+    id: f.id,
+    mag: f.properties.mag,
+    place: f.properties.place || "Unknown location",
+    time: f.properties.time,
+    depth: f.geometry && f.geometry.coordinates ? f.geometry.coordinates[2] : null,
+    url: f.properties.url,
+    tsunami: f.properties.tsunami
+  })).filter(q => Number.isFinite(q.mag) && Number.isFinite(q.time))
+    .sort((a,b) => b.time - a.time);
+}
+
+function buildUSGSUrl(start, end, minMag, orderby = "time") {
+  const p = new URLSearchParams({
+    format: "geojson",
+    starttime: toIso(start),
+    endtime: toIso(end),
+    minmagnitude: String(minMag),
+    orderby
+  });
+  return `${USGS}?${p.toString()}`;
+}
+
+async function fetchJson(url, label) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${label} fetch failed: ${res.status}`);
+  return res.json();
+}
+
+async function fetchText(url, label) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${label} fetch failed: ${res.status}`);
+  return res.text();
+}
+
+async function fetchLivePlasma(start, end) {
+  const raw = await fetchJson(NOAA, "NOAA plasma");
+  return parseNoaaPlasma(raw).filter(d => d.t >= start && d.t <= end);
+}
+
+async function fetchArchivePlasma(start, end) {
+  state.warnings = [];
+
+  const hapiAttempts = [
+    { parameters: "proton_density,flow_speed", format: "json", parser: parseHapiPlasma },
+    { parameters: "Epoch,proton_density,flow_speed", format: "json", parser: parseHapiPlasma },
+    { parameters: "Time,proton_density,flow_speed", format: "json", parser: parseHapiPlasma },
+    { parameters: "proton_density,flow_speed", format: "csv", parser: parseHapiCsv }
+  ];
+
+  for (const attempt of hapiAttempts) {
+    const params = new URLSearchParams({
+      id: "OMNI_HRO2_1MIN",
+      parameters: attempt.parameters,
+      "time.min": toIso(start),
+      "time.max": toIso(end),
+      format: attempt.format
+    });
+
+    const hapiUrl = `${HAPI}?${params.toString()}`;
+
+    try {
+      const payload = attempt.format === "json"
+        ? await fetchJson(hapiUrl, "CDAWeb HAPI")
+        : await fetchText(hapiUrl, "CDAWeb HAPI CSV");
+
+      const parsed = attempt.parser(payload);
+
+      if (parsed.length) {
+        state.source = `NASA CDAWeb HAPI: OMNI_HRO2_1MIN (${attempt.format.toUpperCase()})`;
+        return parsed.filter(d => d.t >= start && d.t <= end);
+      }
+
+      state.warnings.push(`CDAWeb ${attempt.format} returned zero parsed rows for ${attempt.parameters}`);
+    } catch (err) {
+      state.warnings.push(`CDAWeb ${attempt.format} failed for ${attempt.parameters}: ${err.message || err}`);
+    }
+  }
+
+  const startIso = encodeURIComponent(toIso(start));
+  const endIso = encodeURIComponent(toIso(end));
+  const laspAttempts = [
+    `${LASP}?time,proton_density,flow_speed&time%3E=${startIso}&time%3C=${endIso}&formatTime(yyyy-MM-dd'T'HH:mm:ss)`,
+    `${LASP}?time,proton_density,flow_speed&time>=${startIso}&time<=${endIso}&formatTime(yyyy-MM-dd'T'HH:mm:ss)`,
+    `${LASP}?time,proton_density,flow_speed&time%3E=${startIso}&time%3C=${endIso}`,
+    `${LASP}?time,unknown.proton_density,unknown.flow_speed&time%3E=${startIso}&time%3C=${endIso}&formatTime(yyyy-MM-dd'T'HH:mm:ss)`
+  ];
+
+  for (const laspUrl of laspAttempts) {
+    try {
+      const text = await fetchText(laspUrl, "LASP OMNI mirror");
+      const parsed = parseLaspCsv(text).filter(d => d.t >= start && d.t <= end);
+
+      if (parsed.length) {
+        state.source = "LASP Space Weather Portal mirror: OMNI_HRO2_1MIN";
+        return parsed;
+      }
+
+      state.warnings.push(`LASP returned zero parsed rows. First response text: ${text.slice(0, 160).replace(/\s+/g, " ")}`);
+    } catch (err) {
+      state.warnings.push(`LASP failed: ${err.message || err}`);
+    }
+  }
+
+  throw new Error(
+    "Archive plasma fetch produced no usable density rows. Debug trail: " +
+    (state.warnings.join(" | ") || "no diagnostics captured")
+  );
+}
+
+function analyseEvent(eq, plasma, threshold) {
+  const t = eq.time;
+  const prev = plasma.filter(d => d.t >= t - 48 * HOUR && d.t < t - 24 * HOUR);
+  const curr = plasma.filter(d => d.t >= t - 24 * HOUR && d.t <= t);
+
+  if (prev.length < 30 || curr.length < 30) {
+    return { ...eq, available: false };
+  }
+
+  const prevAvg = mean(prev, "density");
+  const currAvg = mean(curr, "density");
+  const peak = maxVal([...prev, ...curr], "density");
+  const crossedBelow = prev.some(d => d.density > threshold) && curr.some(d => d.density < threshold);
+  const consistent = prevAvg > threshold && crossedBelow;
+
+  return { ...eq, available: true, prevAvg, currAvg, peak, crossedBelow, consistent };
+}
+
+function randomTimestamp(min, max, seedish) {
+  const x = Math.sin(seedish * 12.9898) * 43758.5453;
+  return min + (x - Math.floor(x)) * (max - min);
+}
+
+function pseudoNull(eventCount, plasma, threshold, runs = 300) {
+  if (!eventCount || plasma.length < 200) return null;
+  const minT = Math.max(plasma[0].t + 48 * HOUR, state.quakeStart || plasma[0].t + 48 * HOUR);
+  const maxT = Math.min(plasma[plasma.length - 1].t, state.quakeEnd || plasma[plasma.length - 1].t);
+  if (maxT <= minT) return null;
+
+  const rates = [];
+  for (let r = 0; r < runs; r++) {
+    let hits = 0, available = 0;
+    for (let i = 0; i < eventCount; i++) {
+      const fakeTime = randomTimestamp(minT, maxT, r * 1009 + i * 9176 + 37);
+      const fake = analyseEvent({ id: `fake-${r}-${i}`, time: fakeTime, mag: 6, place: "synthetic" }, plasma, threshold);
+      if (fake.available) {
+        available++;
+        if (fake.consistent) hits++;
+      }
+    }
+    if (available) rates.push(hits / available);
+  }
+  if (!rates.length) return null;
+  rates.sort((a,b) => a - b);
+  return {
+    avg: mean(rates),
+    p05: rates[Math.floor(rates.length * .05)],
+    p95: rates[Math.floor(rates.length * .95)],
+    runs
+  };
+}
+
+function getDropZones(plasma, threshold) {
+  const zones = [];
+  let active = null;
+  for (let i = 1; i < plasma.length; i++) {
+    const prev = plasma[i - 1];
+    const curr = plasma[i];
+    if (!active && prev.density > threshold && curr.density <= threshold) {
+      active = { start: curr.t, end: curr.t };
+    }
+    if (active) active.end = curr.t;
+    if (active && curr.density > threshold) {
+      if (active.end - active.start > 20 * 60000) zones.push(active);
+      active = null;
+    }
+  }
+  if (active && active.end - active.start > 20 * 60000) zones.push(active);
+  return zones.slice(-12);
+}
+
+const dropZonePlugin = {
+  id: "dropZones",
+  beforeDatasetsDraw(chart, args, opts) {
+    const { ctx, chartArea, scales } = chart;
+    if (!opts.zones || !scales.x) return;
+    ctx.save();
+    ctx.fillStyle = "rgba(251, 113, 133, 0.09)";
+    for (const z of opts.zones) {
+      const x1 = scales.x.getPixelForValue(z.start);
+      const x2 = scales.x.getPixelForValue(z.end);
+      ctx.fillRect(x1, chartArea.top, x2 - x1, chartArea.bottom - chartArea.top);
+    }
+    ctx.restore();
+  }
+};
+
+Chart.register(dropZonePlugin);
+
+function downsample(data, maxPoints = 900) {
+  if (data.length <= maxPoints) return data;
+  const step = Math.ceil(data.length / maxPoints);
+  return data.filter((_, i) => i % step === 0);
+}
+
+function setPhase(text) {
+  $("phase").textContent = text;
+}
+
+function currentRange() {
+  const mode = $("mode").value;
+  const now = Date.now();
+  if (mode === "live") {
+    const lookback = Number($("lookback").value);
+    const start = now - lookback * DAY;
+    return { mode, quakeStart: start, quakeEnd: now, plasmaStart: start, plasmaEnd: now };
+  }
+
+  const startDate = $("archiveStart").value || "2023-12-30";
+  const span = Number($("archiveDays").value);
+  const quakeStart = Date.parse(`${startDate}T00:00:00Z`);
+  const quakeEnd = quakeStart + span * DAY;
+  const plasmaStart = quakeStart - 48 * HOUR;
+  const plasmaEnd = quakeEnd;
+  return { mode, quakeStart, quakeEnd, plasmaStart, plasmaEnd };
+}
+
+async function loadData() {
+  const threshold = Number($("threshold").value);
+  const minMag = Number($("minMag").value);
+  const year = Number($("year").value);
+  const range = currentRange();
+
+  state.mode = range.mode;
+  state.quakeStart = range.quakeStart;
+  state.quakeEnd = range.quakeEnd;
+  state.plasmaStart = range.plasmaStart;
+  state.plasmaEnd = range.plasmaEnd;
+  state.warnings = [];
+  state.source = range.mode === "live" ? "NOAA SWPC DSCOVR L1" : "NASA CDAWeb HAPI: OMNI_HRO2_1MIN";
+
+  $("loading").style.display = "block";
+  $("dashboard").style.display = "none";
+  $("errorBox").style.display = "none";
+  $("exportCsv").disabled = true;
+
+  try {
+    if (range.mode === "live") {
+      setPhase("Fetching NOAA DSCOVR L1 proton density...");
+      state.plasmaRaw = await fetchLivePlasma(range.plasmaStart, range.plasmaEnd);
+    } else {
+      setPhase(`Fetching NASA OMNI proton density: ${fmt(range.plasmaStart)} to ${fmt(range.plasmaEnd)}...`);
+      state.plasmaRaw = await fetchArchivePlasma(range.plasmaStart, range.plasmaEnd);
+    }
+
+    if (!state.plasmaRaw.length) throw new Error("No usable plasma samples found for this window.");
+
+    setPhase("Fetching USGS earthquake catalogue...");
+    const quakeRes = await fetchJson(buildUSGSUrl(range.quakeStart, range.quakeEnd, minMag, "time"), "USGS earthquakes");
+    state.quakes = parseQuakes(quakeRes);
+
+    setPhase(`Fetching notable M7.4+ events for ${year}...`);
+    const notableRes = await fetchJson(buildUSGSUrl(`${year}-01-01T00:00:00.000Z`, `${year + 1}-01-01T00:00:00.000Z`, 7.4, "magnitude"), "USGS notable earthquakes");
+    state.notable = parseQuakes(notableRes);
+
+    render();
+    $("lastUpdated").textContent = `Loaded: ${fmt(Date.now())}`;
+    $("loading").style.display = "none";
+    $("dashboard").style.display = "block";
+    $("exportCsv").disabled = false;
+  } catch (e) {
+    $("loading").style.display = "none";
+    $("errorBox").style.display = "block";
+    $("errorBox").innerHTML = `<h2>Fetch error</h2><p>${String(e.message || e)}</p><p style="margin-top:10px;">Archive mode depends on browser access to NASA CDAWeb or the LASP mirror. GitHub Pages, StackBlitz, CodePen, or another hosted static page is better than opening the file directly. If this still fails, copy the debug trail above: it tells us which endpoint or parser faceplanted.</p>`;
+  }
+}
+
+function rerenderAnalysisOnly() {
+  if (!state.plasmaRaw.length) return;
+  render();
+}
+
+function render() {
+  const threshold = Number($("threshold").value);
+  $("thresholdVal").textContent = threshold.toFixed(1);
+
+  state.analysed = state.quakes.map(eq => analyseEvent(eq, state.plasmaRaw, threshold));
+
+  const withData = state.analysed.filter(q => q.available);
+  const hits = withData.filter(q => q.consistent);
+  const hitRate = withData.length ? hits.length / withData.length : null;
+  const avgDensity = mean(state.plasmaRaw, "density");
+  const peakDensity = maxVal(state.plasmaRaw, "density");
+  const latest = state.plasmaRaw[state.plasmaRaw.length - 1];
+  const pctAbove = state.plasmaRaw.length ? state.plasmaRaw.filter(d => d.density > threshold).length / state.plasmaRaw.length : null;
+  const sourcePill = state.mode === "archive" ? "Archive source" : "Live source";
+  const rangeText = `${fmt(state.quakeStart)} to ${fmt(state.quakeEnd)}`;
+  const warningText = state.warnings.length ? `<div class="detail" style="color:#fcd34d; margin-top:8px;">${state.warnings.map(w => w.replace(/[<>]/g, "")).join(" · ")}</div>` : "";
+
+  $("stats").innerHTML = `
+    <div class="stat"><span class="label">${sourcePill}</span><div class="value" style="font-size:16px; color:var(--sky); line-height:1.25;">${state.source}</div><div class="detail">Earthquake window: ${rangeText}.</div>${warningText}</div>
+    <div class="stat"><span class="label">Samples</span><div class="value">${state.plasmaRaw.length.toLocaleString("en-GB")}</div><div class="detail">Plasma samples after filtering missing density values.</div></div>
+    <div class="stat"><span class="label">Range end ρ</span><div class="value" style="color:${latest && latest.density > threshold ? "var(--rose)" : "var(--gold)"}">${latest ? latest.density.toFixed(1) : "N/A"}</div><div class="detail">Last available sample in loaded window.</div></div>
+    <div class="stat"><span class="label">Average ρ</span><div class="value" style="color:${avgDensity && avgDensity > threshold ? "var(--rose)" : "var(--gold)"}">${avgDensity ? avgDensity.toFixed(1) : "N/A"}</div><div class="detail">Mean density across loaded plasma data.</div></div>
+    <div class="stat"><span class="label">Peak ρ</span><div class="value">${peakDensity ? peakDensity.toFixed(1) : "N/A"}</div><div class="detail">Highest density sample in loaded plasma data.</div></div>
+    <div class="stat"><span class="label">Above threshold</span><div class="value" style="color:${pctAbove > .2 ? "var(--rose)" : "#94a3b8"}">${pctAbove !== null ? Math.round(pctAbove * 100) + "%" : "N/A"}</div><div class="detail">Fraction of samples above ${threshold.toFixed(1)} p/cm³.</div></div>
+    <div class="stat"><span class="label">1Dy bT hits</span><div class="value" style="color:${hitRate > .5 ? "var(--green)" : "#94a3b8"}">${hitRate !== null ? `${hits.length}/${withData.length}` : "N/A"}</div><div class="detail">${hitRate !== null ? Math.round(hitRate * 100) + "% of analysable events." : "No analysable events."}</div></div>
+  `;
+
+  renderChart(threshold);
+  renderTable(threshold);
+  renderNullBox(threshold, hitRate, withData.length);
+  renderNotable();
+}
+
+function renderChart(threshold) {
+  const visiblePlasma = state.plasmaRaw.filter(d => d.t >= state.quakeStart - 48 * HOUR && d.t <= state.quakeEnd);
+  const data = downsample(visiblePlasma).map(d => ({ x: d.t, y: d.density }));
+  const quakeDots = state.analysed.map(q => ({ x: q.time, y: Math.max(0, threshold * 0.05), mag: q.mag, place: q.place, time: q.time }));
+  const zones = getDropZones(visiblePlasma, threshold);
+
+  const ctx = $("densityChart");
+
+  if (state.chart) state.chart.destroy();
+
+  state.chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      datasets: [
+        {
+          label: "Proton density",
+          data,
+          borderColor: "#f59e0b",
+          backgroundColor: "rgba(245,158,11,.12)",
+          pointRadius: 0,
+          borderWidth: 2,
+          tension: .22,
+          yAxisID: "y"
+        },
+        {
+          label: `Threshold ${threshold.toFixed(1)}`,
+          data: data.map(d => ({ x: d.x, y: threshold })),
+          borderColor: "#fb7185",
+          borderDash: [6,5],
+          pointRadius: 0,
+          borderWidth: 1.5,
+          yAxisID: "y"
+        },
+        {
+          type: "scatter",
+          label: "Earthquakes",
+          data: quakeDots,
+          pointRadius: ctx => {
+            const m = ctx.raw && ctx.raw.mag ? ctx.raw.mag : 5.5;
+            return Math.max(4, Math.min(12, (m - 4.5) * 2.2));
+          },
+          pointBackgroundColor: ctx => magColour(ctx.raw.mag),
+          pointBorderColor: ctx => magColour(ctx.raw.mag),
+          yAxisID: "y"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: "nearest" },
+      plugins: {
+        legend: { labels: { color: "#94a3b8", boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            title(items) {
+              if (!items.length) return "";
+              return fmt(items[0].parsed.x);
+            },
+            label(item) {
+              if (item.dataset.label === "Earthquakes") {
+                const q = item.raw;
+                return `M${q.mag.toFixed(1)} ${q.place}`;
+              }
+              return `${item.dataset.label}: ${item.parsed.y.toFixed(2)}`;
+            }
+          }
+        },
+        dropZones: { zones }
+      },
+      scales: {
+        x: {
+          type: "time",
+          time: { unit: state.quakeEnd - state.quakeStart > 16 * DAY ? "week" : "day" },
+          ticks: { color: "#64748b", callback: val => fmtShort(val) },
+          grid: { color: "#172033" }
+        },
+        y: {
+          ticks: { color: "#64748b" },
+          grid: { color: "#172033" }
+        }
+      }
+    }
+  });
+}
+
+function renderTable(threshold) {
+  const rows = state.analysed.slice(0, 60).map(q => {
+    const magClass = q.mag >= 7.5 ? "rose" : q.mag >= 6.5 ? "gold" : "grey";
+    return `
+      <tr>
+        <td class="mono" style="color:var(--muted);">${fmt(q.time)}</td>
+        <td>${pill(`M${q.mag.toFixed(1)} ${magLabel(q.mag)}`, magClass)}</td>
+        <td class="location" title="${q.place.replaceAll('"', '&quot;')}">${q.url ? `<a href="${q.url}" target="_blank" rel="noreferrer">${q.place}</a>` : q.place}</td>
+        <td style="color:var(--muted);">${Number.isFinite(q.depth) ? q.depth.toFixed(1) + " km" : "N/A"}</td>
+        <td class="mono" style="color:${q.prevAvg > threshold ? "var(--rose)" : "var(--muted)"}">${q.available ? q.prevAvg.toFixed(1) : "N/A"}</td>
+        <td class="mono" style="color:#94a3b8;">${q.available ? q.currAvg.toFixed(1) : "N/A"}</td>
+        <td class="mono" style="color:var(--gold);">${q.available ? q.peak.toFixed(1) : "N/A"}</td>
+        <td>${!q.available ? `<span style="color:var(--muted);">No local data</span>` : q.consistent ? `<strong style="color:var(--green);">✓ consistent</strong>` : `<span style="color:var(--muted);">✗ no</span>`}</td>
+      </tr>
+    `;
+  }).join("");
+
+  $("eventRows").innerHTML = rows || `<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:30px;">No events matching current filter.</td></tr>`;
+}
+
+function renderNullBox(threshold, hitRate, eventCount) {
+  const n = pseudoNull(eventCount, state.plasmaRaw, threshold);
+  if (!n) {
+    $("nullBox").innerHTML = `<p>Not enough data for a pseudo-null smell test.</p>`;
+    return;
+  }
+
+  $("nullBox").innerHTML = `
+    <p>
+      Synthetic average hit rate:
+      <strong class="mono" style="color:var(--sky);">${Math.round(n.avg * 100)}%</strong>.
+      5th-95th range:
+      <strong class="mono" style="color:var(--sky);">${Math.round(n.p05 * 100)}%-${Math.round(n.p95 * 100)}%</strong>.
+      Observed rate:
+      <strong class="mono" style="color:var(--gold);">${hitRate !== null ? Math.round(hitRate * 100) + "%" : "N/A"}</strong>.
+    </p>
+    <p style="margin-top:10px;">This random timestamp null ignores clustering, aftershocks, regional tectonics, seasonality, and catalogue completeness. It is a smoke alarm, not a courtroom.</p>
+  `;
+}
+
+function renderNotable() {
+  const year = Number($("year").value);
+  $("notableTitle").textContent = `Notable events in ${year}`;
+
+  $("events").innerHTML = state.notable.map(q => {
+    const cls = q.mag >= 7.5 ? "rose" : "gold";
+    return `
+      <a class="event" href="${q.url || "https://earthquake.usgs.gov/earthquakes/search/"}" target="_blank" rel="noreferrer">
+        ${pill(`M${q.mag.toFixed(1)} ${magLabel(q.mag)}`, cls)}
+        ${q.tsunami ? pill("Tsunami flag", "") : ""}
+        <div class="eventTitle">${q.place}</div>
+        <div class="eventMeta">${fmt(q.time)} · ${Number.isFinite(q.depth) ? q.depth.toFixed(1) + " km depth" : "depth unknown"}</div>
+      </a>
+    `;
+  }).join("") || `<p>No M7.4+ events found for this year.</p>`;
+}
+
+function exportCsv() {
+  if (!state.analysed.length) return;
+  const header = ["time_utc", "magnitude", "place", "depth_km", "prev_24h_avg_density", "curr_24h_avg_density", "peak_density_48h", "crossed_below_threshold", "consistent", "usgs_url"];
+  const rows = state.analysed.map(q => [
+    toIso(q.time),
+    q.mag,
+    q.place,
+    Number.isFinite(q.depth) ? q.depth : "",
+    q.available ? q.prevAvg : "",
+    q.available ? q.currAvg : "",
+    q.available ? q.peak : "",
+    q.available ? q.crossedBelow : "",
+    q.available ? q.consistent : "",
+    q.url || ""
+  ]);
+
+  const csv = [header, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `solar-seismic-analysed-${state.mode}-${toIso(state.quakeStart).slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function updateControlVisibility() {
+  const archive = $("mode").value === "archive";
+  document.querySelectorAll(".archiveOnly").forEach(el => el.classList.toggle("hidden", !archive));
+  document.querySelectorAll(".liveOnly").forEach(el => el.classList.toggle("hidden", archive));
+}
+
+$("refresh").addEventListener("click", loadData);
+$("exportCsv").addEventListener("click", exportCsv);
+$("mode").addEventListener("change", () => { updateControlVisibility(); loadData(); });
+$("minMag").addEventListener("change", loadData);
+$("lookback").addEventListener("change", loadData);
+$("archiveStart").addEventListener("change", loadData);
+$("archiveDays").addEventListener("change", loadData);
+$("year").addEventListener("change", loadData);
+$("threshold").addEventListener("input", rerenderAnalysisOnly);
+
+updateControlVisibility();
+loadData();
+</script>
+</body>
+</html>
